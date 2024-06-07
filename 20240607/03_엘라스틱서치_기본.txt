@@ -1,0 +1,144 @@
+# cat API => 엘라스틱서치의 현재 상태를 빠르게 확인하는 기능을 제공한다.
+# GET _cat을 요청하면 car API가 지원하는 목록을 확인한다.
+GET _cat 
+
+GET _cat/indices
+GET _cat/indices?v
+
+# 다음과 같은 데이터가 있다고 가정해보자.
+# name: mike
+# age: 25
+# gender : male
+
+# 관계형 데이터베이스는 데이터를 저장하려면 아래와 같이 테이블을 먼저 만들어야 한다.
+# create table member (
+#   id int not null auto_increment primary key,
+#   name varchar(50) not null,
+#   age int not null,
+#   gender varchar(6) not null
+# )
+
+# 테이블이 작성되었으면 insert sql 명령을 실행한다.
+# insert into member (name, age, gender) values ('mike', 25, 'male')
+
+# mongodb도 그랬지만 elastic search도 json 형태로 저장한다.
+# {
+#   "name": "mike",
+#   "age": 25,
+#   "gender": "male"
+# }
+
+# 관계형 데이터베이스의 테이블은 mongodb는 컬렉션, elastic search는 인덱스라 부른다.
+# 관계형 데이터베이스의 레코드는 mongodb나 elastic search 모두 도큐먼트라 부른다.
+
+# 인덱스 만들기
+# PUT 인덱스이름
+PUT index
+PUT index2
+
+# 인덱스 전체 확인하기
+GET index
+GET index2
+
+# 인덱스 삭제하기 => 인덱스가 삭제되면서 저장된 모든 도큐먼트도 같이 삭제된다.
+DELETE index
+DELETE index2
+
+# ========================================================================================
+
+# 인덱스를 만들면서 도큐먼트 입력하기
+# 인덱스가 없으면 인덱스를 만들고 도큐먼트를 입력하고 인덱스가 있으면 기존 인덱스에
+# 도큐먼트를 입력한다.
+# 도큐먼트를 인덱스에 저장(포함)시키는 동작을 인덱싱이라고 한다.
+# 도큐먼트는 json 형식으로 입력한다.
+# PUT 인덱스이름/_doc/아이디
+PUT index1/_doc/1
+{
+  "name": "mike",
+  "age": 25,
+  "gender": "male"
+}
+GET index1
+# 인덱스의 매핑(데이터 구조)만 확인한다.
+GET index1/_mapping
+
+# 기존 인덱스에 도큐먼트 입력하기
+# PUT 인덱스이름/_doc/아이디
+PUT index1/_doc/2
+{
+  "name": "jane",
+  "age": 20,
+  "gender": "female"
+}
+
+# "country" 필드가 추가되고 "age", "gender" 필드는 사용하지 않지만 문제없이 인덱싱 된다.
+PUT index1/_doc/3
+{
+  "name": "kim",
+  "country": "korea"
+}
+
+# 데이터가 잘못된 도큐먼트 입력하기
+# "age" 필드는 long 타입으로 매핑되었는데 text 타입으로 입력했다.
+# 관계형 데이터베이스라면 오류가 발생했겠지만 유연하게 대응하는 엘라스틱서치는 데이터
+# 타입을 변환해서 저장한다.
+PUT index1/_doc/4
+{
+  "name": "hong",
+  "age": "40",
+  "gender": "male"
+}
+
+# ========================================================================================
+
+# 아이디를 이용해서 인덱스에 저장된 개별 도큐먼트 조회하기
+# GET 인덱스이름/_doc/아이디
+GET index1/_doc/1
+GET index1/_doc/2
+GET index1/_doc/3
+GET index1/_doc/4
+
+# DSL(Domain Specific Language)을 이용해서 인덱스에 저장된 전체 도큐먼트 조회하기
+# GET 인덱스이름/_search
+GET index1/_search
+
+# ========================================================================================
+
+# 도큐먼트 수정하기
+# 존재하는 아이디에 실행하면 도큐먼트가 수정되고 존재하지 않는 아이디에 실행하면 
+# 도큐먼트가 입력된다.
+# PUT 인덱스이름/_doc/아이디
+PUT index1/_doc/1
+{
+  "name": "park",
+  "age": 45,
+  "gender": "female"
+}
+
+# PUT 명령으로 도큐먼트를 수정하면 기존에 저장된 모든 필드가 먼저 제거된 후 새로
+# 입력하는 내용으로 대체된다. => mongodb의 replaceOne() 처럼 실행된다.
+PUT index1/_doc/2
+{
+  "name": "han"
+}
+
+# POST 명령을 사용해서 도큐먼트를 수정하면 저장되어있던 데이터는 그대로 유지되고
+# 수정하는 데이터만 수정된다. => mongodb의 updateOne()이나 updateMany() 처럼 실행된다.
+# POST 인덱스이름/_update/아이디
+# {} 내부에 바로 수정할 내용을 입력하면 안되고 doc 블록을 만들고 doc 블록 내부에
+# 수정할 내용을 입력해야 한다.
+POST index1/_update/3
+{
+  "doc": {
+    "name": "choi"
+  } 
+}
+
+# ========================================================================================
+
+# 아이디를 이용해서 인덱스에 저장된 개별 도큐먼트 삭제하기
+# DELETE 인덱스이름/_doc/아이디
+DELETE index1/_doc/1
+DELETE index1/_doc/2
+DELETE index1/_doc/3
+DELETE index1/_doc/4
