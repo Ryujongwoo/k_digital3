@@ -1,0 +1,4 @@
+{ "index": { "_index": "index3", "_id": "1" } }
+{ "name": "kang", "age": 30, "gender": "male" }
+{ "index": { "_index": "index3", "_id": "2" } }
+{ "name": "lee", "age": 50, "gender": "female" }
