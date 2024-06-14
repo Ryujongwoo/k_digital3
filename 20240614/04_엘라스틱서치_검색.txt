@@ -1,0 +1,1051 @@
+GET _cat/indices?v
+# 인덱스 매핑 보기
+GET kibana_sample_data_ecommerce/_mapping
+# 인덱스에 저장된 전체 도큐먼트 보기
+GET kibana_sample_data_ecommerce/_search
+
+# 엘라스틱서치 검색
+
+# 엘라스틱서치 검색 엔진을 사용하려면 쿼리 사용법을 알아야 한다.
+# "_search"는 검색 쿼리를 위해서 엘라스틱 서치에서 제공하는 REST API 이다.
+# 텍스트, 숫자, 정형, 비정형 데이터를 저장한 다음에 인덱싱을 마치고 나면 쿼리를 실행해서 결과를 얻어올 수 있다.
+
+# 쿼리 컨텍스트(query context)
+# 쿼리 컨텍스트는 질의에 대한 유사도를 계산해 이를 기준으로 더 정확한 결과를 먼저 보여준다.
+# 검색할 내용이 "엘라스틱"일 때 도큐먼트에 "엘라스틱"이 포함되어 있는지 검색할 때 사용한다.
+
+# GET 인덱스 이름/_search
+# {
+#   "query": {
+#     "실행할 쿼리 이름": {
+#       "필드 이름": "검색어"
+#     }
+#   }
+# }
+
+# 쿼리를 사용(조건을 설정)해서 도큐먼트 보기
+# "match"는 전문 검색을 위한 쿼리로, 역인덱싱된 용어를 검색할 때 사용한다.
+# "kibana_sample_data_ecommerce" 인덱스에서 "category" 필드의 역인덱스 테이블에 "clothing"라는 용어가 있는 모든 도큐먼트를 찾는다.
+# select * from kibana_sample_data_ecommerce where category like '%clothing%'
+GET kibana_sample_data_ecommerce/_search
+{
+  "query": {
+    "match": {
+      "category": "clothing"
+    }
+  }
+}
+
+# 필터 컨텍스트(filter context)
+# 필터 컨텍스트는 질의에 대한 유사도를 계산하지 않고 일치 여부에 따른 결과만 보여준다.
+# 검색할 내용이 "엘라스틱"일 때 도큐먼트에 정확히 "엘라스틱"인지 검색할 때 사용한다.
+
+# GET 인덱스 이름/_search
+# {
+#   "query": {
+#     "실행할 쿼리 이름": {
+#       "filter": [
+#         {
+#           "필터에 사용할 쿼리 이름": {
+#             "필드 이름": "검색어"
+#           }
+#         }
+#       ]
+#     }
+#   }
+# }
+
+# 필터를 사용(조건을 설정)해서 도큐먼트 보기
+# "bool"은 논리 쿼리로 내부 "filter"의 타입에 적용된다.
+# "kibana_sample_data_ecommerce" 인덱스에서 "day_of_week" 필드에 저장된 값이 정확히 "Friday"인 모든 도큐먼트를 찾는다.
+# select * from kibana_sample_data_ecommerce where day_of_week = 'Friday'
+GET kibana_sample_data_ecommerce/_search
+{
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "term": {
+            "day_of_week": "Friday"
+          }
+        }
+      ]
+    }
+  }
+}
+
+# ===========================================================================================
+
+# 쿼리 스트링(query string)과 쿼리 DSL(query Domain Specific Language)
+# 엘라스틱서치에서 쿼리를 사용하는 방법은 쿼리 스트링과 쿼리 DSL 두 가지가 있다.
+# 쿼리 스트링은 한 줄 절도의 간단한 쿼리에 사용하고 쿼리 DSL은 한 줄에 넣기 힘든 복잡한 쿼리에 사용된다.
+# 쿼리 DSL은 엘라스틱서치에서 제공하는 쿼리 전용 언어로 json 기반의 언어이다.
+
+# 쿼리 스트링
+# 쿼리 스트링은 REST API의 URL에 쿼리문을 작성하는 방식으로 실행할 수 있어서 사용하기 쉽다.
+# 복잡한 논리 조건의 경우 괄호를 이용해야 하는데, 조건이 복잡해지면 가독성이 좋지 않고 오류를 범하기 쉽다. => 간단한 쿼리에 사용한다.
+
+GET kibana_sample_data_ecommerce/_search?q=customer_full_name:Mary
+
+# 쿼리 DSL
+# 쿼리 DSL은 REST API의 요청 본문({} 블록) 내부에 json 형태로 쿼리를 작성한다.
+# 엘라스틱서치의 모든 쿼리를 지원하기 때문에 매우 강력하며 복잡한 쿼리를 구현할 수 있는 장점이 있다. => 복잡한 쿼리에 사용한다.
+
+GET kibana_sample_data_ecommerce/_search
+{
+  "query": {
+    "match": {
+      "customer_full_name": "Mary"
+    }
+  }
+}
+
+# ===========================================================================================
+
+# 유사도 스코어
+# 쿼리 컨텍스트에서는 엘라스틱서치가 지원하는 다양한 유사도 스코어 알고리즘을 사용할 수 있는데 기본적으로 BM25 알고리즘을 이용해 유사도 스코어를 계산한다.
+# 유사도 스코어는 질의문과 토큐먼트의 유사도를 표현하는 값으로, 유사도 스코어가 높을수록 찾고자 하는 도큐먼트에 가깝다는 사실을 의미한다.
+# "explain": true를 추가하면 쿼리 내부적인 최적화 방법과 어떤 경로를 통해 검색되었으며 어떤 기준으로 유사도 스코어가 계산되었는지 알 수 있다.
+
+GET kibana_sample_data_ecommerce/_search
+{
+  "query": {
+    "match": {
+      "products.product_name": "Pants"
+    }
+  },
+  "explain": true
+}
+
+# ===========================================================================================
+
+# 쿼리
+# 엘라스틱서치는 검색을 위해 쿼리를 지원하고 크게 리프 쿼리와 복합 쿼리로 나눌 수 있다.
+# 리프 쿼리(leaf query): 특정 필드에서 용어를 찾는 쿼리로 match, term, range 등이 있다.
+# 복합 쿼리(compound query): 쿼리를 조합해서 사용하는 쿼리로 bool 등이 있다.
+
+# 전문 쿼리는 전문 검색을 하기 위해 사용되며, 전문 검색을 할 필드는 인덱스 매핑시 text 타입으로 매핑해야 한다.
+# 전문 쿼리는 일반적으로 블로그처럼 텍스트가 많은 필드에서 특정 용어를 검색할 때 사용되며 구글이나 네이버에서 검색어를 이용해 검색사는 방식이 전문 쿼리와 같다고 생각하면 된다.
+
+# 용어 수준 쿼리는 정확히 일치하는 용어를 찾기 위해 사용되며, 용어 수준 검색을 할 필드는 인덱스 매핑시 keyword 타입으로 매핑해야 한다.
+# 용어 수준 쿼리는 전문 쿼리와 달리 정확한 용어를 검색할 때 사용되며, 일반적으로 숫자, 날짜 범주셩 데이터를 정확히 검색할 때 사용된다.
+
+# match query => 단어 전문 검색
+# match query는 전문 쿼리의 가장 기본이 되는 쿼리로, 전체 텍스트 중에서 특정 용어나 용어들을 검색할 때 사용한다.
+# match query를 사용하기 위해서는 검색하고 싶은 필드를 알아야 한다. 필드명을 모르면 쿼리를 진행할 수 없으므로 "GET kibana_sample_data_ecommerce/_mapping"를 실행해서 인덱스에 포함된 필드가 어떤 것들이 있는지 확인해야 한다.
+
+# 한 개의 용어를 전문 검색하는 match query
+# "_source" 파라미터는 생략시 인덱스의 전체 필드를 얻어오고 인덱스에 매핑된 필드 중에서 특정 필드면 보고 싶다면 [] 안에 보고 싶은 필드를 지정하면 되고 보고 싶은 필드가 2개 이상이면 ","로 구분해서 필드를 나열한다.  
+# select customer_full_name, customer_first_name, customer_last_name from kibana_sample_data_ecommerce where customer_full_name like '%Mary%'
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name", "customer_first_name", "customer_last_name"], 
+  "query": {
+    "match": {
+      "customer_full_name": "Mary"
+    }
+  }
+}
+
+# 여러 개의 용어를 전문 검색하는 match query
+# 검색할 필드에 "Mary Pope"와 같이 검색어를 띄어쓰기를 경계로 나열하면 "or" 연산으로 인식한다.
+# select customer_full_name, customer_gender from kibana_sample_data_ecommerce where customer_full_name like '%Mary%' or customer_full_name like '%Pope%'
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name", "customer_gender"], 
+  "query": {
+    "match": {
+      "customer_full_name": "Mary Pope"
+    }
+  }
+}
+
+# "and" 연산을 사용하려면 아래와 같이 검색할 필드에 {}를 이용해서 "query" 파라미터로 검색어를 지정하고 "operator" 파라미터로 "and" 연산을 명시적으로 지정하면 된다.
+# "operator" 파라미터는 생략시 "or"가 기본값으로 사용된다.
+# select customer_full_name, customer_gender from kibana_sample_data_ecommerce where customer_full_name like '%Mary%' and customer_full_name like '%Pope%'
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name", "customer_gender"], 
+  "query": {
+    "match": {
+      "customer_full_name": {
+        "query": "Mary Pope",
+        "operator": "and"
+      }
+    }
+  }
+}
+
+# ===========================================================================================
+
+# match_phrase query => 문장 전문 검색
+# match query는 단어를 가지고 전문 검색을 실행하지만 match_phrase query는 "빨강색 바지", "85인치 텔레비전"같이 2개 이상의 단어가 연결되어 만들어지는 문장(phrase, 구절)을 가지고 전문 검색을 실행한다.
+# "빨강색 바지"를 검색 한다는 것은 "바지 빨강색"을 찾으려는 의도가 아니므로 문장을 구성하는 단어의 순서가 중요하다.
+# match_phrase query는 검색시 많은 자원을 요구하기 때문에 자주 사용하지 것은 좋지 않다.
+
+# "customer_full_name" 필드에 "Mary Bailey" 순서로 입력된 데이터가 있으므로 검색된다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name"], 
+  "query": {
+    "match_phrase": {
+      "customer_full_name": "Mary Bailey"
+    }
+  }
+}
+
+# "customer_full_name" 필드에 "Bailey Mary" 순서로 입력된 데이터가 없으므로 검색되지 않는다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name"], 
+  "query": {
+    "match_phrase": {
+      "customer_full_name": "Bailey Mary"
+    }
+  }
+}
+
+# ===========================================================================================
+
+# term query => 용어 쿼리
+# term query는 용어 수준 쿼리의 대표적인 쿼리로 1개의 용어를 검색하며 형식은 match query와 비슷하지만 match query는 분석기에 의해 검색어가 토큰화되고 대소문자를 구분하지 않지만 term query는 분석기에 의해 검색어가 토큰화되지 않고 대소문자도 구분하는 차이점이 있다.
+
+# GET 인덱스 이름/_search
+# {
+#   "query": {
+#     "term": {
+#       "용어 검색할 필드 이름": {
+#         "value": "검색할 용어"
+#       }
+#     }
+#   }
+# }
+
+# "용어 검색할 필드 이름"의 {} 블록에 "value" 파라미터 1개만 필요하므로 {} 블록과 "value" 파라미터를 생략해도 정상적으로 실행된다.
+# GET 인덱스 이름/_search
+# {
+#   "query": {
+#     "term": {
+#       "용어 검색할 필드 이름": "검색할 용어"
+#     }
+#   }
+# }
+
+# text 타입의 필드에 대한 term query
+# "customer_full_name" 필드는 text 타입의 필드이므로 term query를 실행하면 아무것도 검색되지 않는다.
+# text 타입으로 선언된 필드는 term query는 실행할 수 없고 match query나 match_phrase query를 실행해야 한다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name"],
+  "query": {
+    "term": {
+      "customer_full_name": {
+        "value": "Mary Bailey"
+      }
+    }
+  }
+}
+
+# keyword 타입의 필드에 대한 term query
+# "customer_full_name" 필드는 text 타입을 지정해서 전문 검색이 가능하게 선언했고 "fields" 파라미터를 이용해서 "keyword" 필드를 별도로 만들고 용어 검색이 가능하게 keyword 타입을 지정했다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name"],
+  "query": {
+    "term": {
+      "customer_full_name.keyword": {
+        "value": "Mary Bailey"
+      }
+    }
+  }
+}
+
+# 아래와 같이 term query를 만들어도 정상적으로 실행된다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name"],
+  "query": {
+    "term": {
+      "customer_full_name.keyword": "Mary Bailey"
+    }
+  }
+}
+
+# term query는 대문자와 소문자를 구분하기 때문에 검색어를 위와 같이 "Mary Bailey"로 지정하면 검색되지만 아래와 같이 "mary mailey"로 지정하면 검색되지 않는다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name"],
+  "query": {
+    "term": {
+      "customer_full_name.keyword": {
+        "value": "mary mailey"
+      }
+    }
+  }
+}
+
+# ===========================================================================================
+
+# terms query => 용어들 쿼리
+# terms query는 용어 수준 쿼리의 일종이며 여러 개의 용어를 검색해준다.
+# term query와 마찬가지로 keyword 타입으로 매핑된 필드에서 사용해야 하며, 분석기를 거치지 않기 때문에 대소문자도 신경을 써야한다.
+# term query 쿼리는 검색할 용어를 "" 내부에 그냥 쓰면 되지만 terms query는 여러 개의 용어를 검색해야 하기 때문에 [] 내부에 검색할 용어를 ","로 구분해서 나열한다.
+
+# GET 인덱스 이름/_search
+# {
+#   "query": {
+#     "terms": {
+#       "용어 검색할 필드 이름": ["검색할 용어", "검색할 용어", ...]
+#     }
+#   }
+# }
+
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["day_of_week", "day_of_week_i"],
+  "query": {
+    "terms": {
+      "day_of_week": ["Monday", "Sunday"]
+    }
+  }
+}
+
+# ===========================================================================================
+
+# multi_match query
+# multi_match query는 "match"가 들어가 있으므로 전문 검색 쿼리이므로 text 타입으로 매핑된 필드에서 사용해야 한다.
+# match, match_phrase, term, terms query들은 검색할 데이터가 저장된 필드의 이름을 정확히 알고있는 경우에 사용한다. => 데이터를 검색할 필드의 이름을 1개만 적어야 한다.
+# 검색하려는 용어나 문장이 정확히 어떤 필드에 저장되어 있는지 모르는 경우가 발생될 수 있다. 이때 사용하는 쿼리가 multi_match query 이다.
+# multi_match query는 단일 필드에서만 검색을 하지 않고 여러 개의 필드에서 검색이 가능하다. => 데이터를 검색할 필드 이름을 여러 개를 적을 수 있다.
+
+# GET kibana_sample_data_ecommerce/_search
+# {
+#   "query": {
+#     "multi_match": {
+#       "query": "검색할 용어",
+#       "fields": ["검색할 용어가 있을것으로 예상되는 필드", ...]
+#     }
+#   }
+# }
+
+# "query" 파라미터에 검색할 용어를 입력한다.
+# "fields" 파라미터의 [] 내부에 검색할 용어가 있을것으로 예상되는 필드 목록을 나열한다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_first_name", "customer_last_name", "customer_full_name"],
+  "query": {
+    "multi_match": {
+      "query": "underwood",
+      "fields": ["customer_first_name", "customer_last_name", "customer_full_name"]
+    }
+  }
+}
+
+# 와일드카드 문자를 이용한 multi_match query
+# "_source" 파라미터나 "multi_match" 파라미터의 "fields" 파라미터는 [] 안에 여러 개의 필드 이름을 ","로 구분해서 나열하는 경우 와일드카드를 문자를 이용하면 []를 사용하지 않을 수 있다.
+# customer_*: "customer_"로 시작하는
+# *_name: "_name_"으로 끝나는
+# *_full_*: "_full_"을 포함하는
+# customer_*_name: "customer_"로 시작하고 "_name_"으로 끝나는
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": "customer_*_name",
+  "query": {
+    "multi_match": {
+      "query": "underwood",
+      "fields": "customer_*_name"
+    }
+  }
+}
+
+# 검색어가 있을것으로 예상되는 필드에 가중치를 부여할 수 있다. => Boosting 기법이라고 한다.
+# 블로그를 검색하는데 "엘라스틱"이라는 용어가 제목에도 있고 본문에도 있을 때 일반적으로 "엘라스틱"이라는 용어가 제목에 있는 도큐먼트가 더 중요할 가능성이 높은데 이럴 경우 제목 필드에 가중치를 지정한다.
+# 가중치는 가중치를 부여할 필드 뒤에 "^" 기호와 가중치를 적어주면 된다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": "customer_*_name",
+  "query": {
+    "multi_match": {
+      "query": "underwood",
+      "fields": [
+        "customer_first_name", 
+        "customer_last_name^2", 
+        "customer_full_name"
+      ]
+    }
+  }
+}
+
+# ===========================================================================================
+
+# range query
+# range query는 날짜, 숫자, ip 주소의 범위를 지정해서 범위 안의 데이터들을 검색할 때 사용한다.
+# range query는 날짜, 숫자, ip 주소 타입의 데이터에 사용이 가능하고 문자열 타입의 데이터에는 사용할 수 없다.
+# 범위 지정에는 "gt"(크다), "gte"(크거나 같다), "lt"(작다), "lte"(작거나 같다) 파라미터를 사용한다.
+
+# GET 인덱스 이름/_search
+# {
+#   "query": {
+#     "range": {
+#       "범위 쿼리를 사용할 필드 이름": {
+#         범위 조건
+#       }
+#     }
+#   }
+# }
+
+# "timestamp" 필드에서 "2024-07-01T00:00:00" 부터 "2024-07-03T23:59:59" 사이의 데이터를 검색한다.
+GET kibana_sample_data_flights/_search
+{
+  "_source": ["timestamp"],
+  "query": {
+    "range": {
+      "timestamp": {
+        "gte": "2024-07-01",
+        "lte": "2024-07-03"
+      }
+    }
+  }
+}
+
+# 날짜/시간 검색은 보통 현재(now)를 기준으로 하는 경우가 많기 때문에 현재를 기준으로 범위를 지정할 수 있다.
+# 현재를 의미하는 "now"에다가 y(년), M(월), w(주), d(일), h(시), m(분), s(초)를 "+", "-" 연산을 이용해서 범위를 지정할 수 있다.
+# "now": 현재 시각
+# "now+1d": 현재 시각 + 1일
+# "now+1h+30m+15s": 현재 시각 + 1시, 30분, 15초
+# "2024-06-14||+1w": 2024-06-14 + 1주
+GET kibana_sample_data_flights/_search
+{
+  "_source": ["timestamp"],
+  "query": {
+    "range": {
+      "timestamp": {
+        "gte": "2024-06-14||+1w"
+      }
+    }
+  }
+}
+
+GET kibana_sample_data_flights/_search
+{
+  "_source": ["timestamp", "FlightDelayMin"],
+  "query": {
+    "range": {
+      "FlightDelayMin": {
+        "gte": "300"
+      }
+    }
+  }
+}
+
+# ===========================================================================================
+
+# 범위형 데이터 타입
+# 엘라스틱서치는 범위 데이터를 저장할 수 있는 범위형 데이터 타입이 있다.
+# 엘라스틱서치는 범위형 데이터 타입은 정수형 범위(integer_range, long_range), 실수형 범위(float_range, double_range), ip 주소 범위(ip_range), 날짜 범위(date_range) 총 6가지 타입을 지원한다.
+
+# 날짜/시간 범위 타입을 가지는 인덱스 생성
+PUT range_type_test1
+{
+  "mappings": {
+    "properties": {
+      "test_date": {
+        "type": "date_range"
+      }
+    }
+  }
+}
+GET range_type_test1/_mapping
+GET range_type_test1/_search
+
+# "test_date" 필드는 날짜/시간(date) 타입이 아니고 날짜/시간 범위 타입(date_range)이므로 아래와 같이 날짜/시간 타입의 데이터를 입력하면 에러가 발생된다.
+PUT range_type_test1/_doc/1
+{
+  "test_date": "2024-06-13"
+}
+
+# "test_date" 필드는 날짜/시간 범위 타입(date_range)이므로 범위 지정에 사용하는 "gt, "gte", "lt", "lte" 파라미터를 사용해서 아래와 같이 데이터를 입력해야 한다.
+PUT range_type_test1/_doc/1
+{
+  "test_date": {
+    "gte": "2024-06-13"
+  }
+}
+
+PUT range_type_test1/_doc/2
+{
+  "test_date": {
+    "gte": "2024-06-13",
+    "lte": "2024-07-12"
+  }
+}
+
+PUT range_type_test1/_doc/3
+{
+  "test_date": {
+    "lt": "2024-06-13"
+  }
+}
+
+GET range_type_test1/_search
+{
+  "query": {
+    "range": {
+      "test_date": {
+        "gte": "2024-06-20"
+      }
+    }
+  }
+}
+
+# ===========================================================================================
+
+# 숫자(정수) 범위 타입을 가지는 인덱스 생성
+PUT range_type_test2
+{
+  "mappings": {
+    "properties": {
+      "test_integer": {
+        "type": "integer_range"
+      }
+    }
+  }
+}
+GET range_type_test2/_mapping
+GET range_type_test2/_search
+DELETE range_type_test2
+
+# "test_integer" 필드는 정수(integer) 타입이 아니고 정수 범위 타입(integer_range)이므로 아래와 같이 정수 타입의 데이터를 입력하면 에러가 발생된다.
+PUT range_type_test2/_doc/1
+{
+  "test_integer": 10
+}
+
+# "test_integer" 필드는 정수 범위 타입(integer_range)이므로 범위 지정에 사용하는 "gt, "gte", "lt", "lte" 파라미터를 사용해서 아래와 같이 데이터를 입력해야 한다.
+PUT range_type_test2/_doc/1
+{
+  "test_integer": {
+    "gte": 10, "lt": 20
+  }
+}
+
+PUT range_type_test2/_doc/2
+{
+  "test_integer": {
+    "gte": 20, "lt": 30
+  }
+}
+PUT range_type_test2/_doc/3
+{
+  "test_integer": {
+    "gte": 30, "lt": 40
+  }
+}
+PUT range_type_test2/_doc/4
+{
+  "test_integer": {
+    "gte": 40, "lt": 50
+  }
+}
+
+# 범위 쿼리는 "relation" 파라미터를 사용해 어떤 범위를 포함할지 지정할 수 있다.
+# "intersects": 기본값, 쿼리의 범위 값이 도큐먼트의 범위 데이터를 일부라도 포함하면 검색된다.
+# range_type_test2 인덱스의 도큐먼트들은 각각 10 ~ 19, 20 ~ 29, 30 ~ 39, 40 ~ 49 범위를 가지기 때문에 쿼리의 범위 값으로 지정된 15 ~ 45 범위를 10 ~ 19, 40 ~ 49는 일부를 포함되고 20 ~ 29, 30 ~ 39는 전부 포함되기 때문에 10 ~ 19, 20 ~ 29, 30 ~ 39, 40 ~ 49 범위가 모두 검색된다.
+GET range_type_test2/_search
+{
+  "query": {
+    "range": {
+      "test_integer": {
+        "gte": 15,
+        "lte": 45,
+        "relation": "intersects"
+      }
+    }
+  }
+}
+
+# "contains": 쿼리의 범위 값이 도큐먼트의 범위 데이터를 모두 포함해야 검색된다.
+# range_type_test2 인덱스의 도큐먼트들은 각각 10 ~ 19, 20 ~ 29, 30 ~ 39, 40 ~ 49 범위를 가지기 때문에 쿼리의 범위 값으로 지정된 15 ~ 45 범위를 모두 포함하는 도큐먼트가 없기 때문에 아무것도 검색되지 않는다.
+GET range_type_test2/_search
+{
+  "query": {
+    "range": {
+      "test_integer": {
+        "gte": 15,
+        "lte": 45,
+        "relation": "contains"
+      }
+    }
+  }
+}
+
+# "within": 도큐먼트의 범위 데이터가 쿼리의 범위 값에 모두 포함하면 검색된다.
+# 쿼리의 범위 값으로 지정된 15 ~ 45이고 dl 이 범위에 완전히 포함되는 범위를 가지는 도큐먼트는 20 ~ 29, 30 ~ 39이므로 2개가 검색된다.
+GET range_type_test2/_search
+{
+  "query": {
+    "range": {
+      "test_integer": {
+        "gte": 15,
+        "lte": 45,
+        "relation": "within"
+      }
+    }
+  }
+}
+
+# ===========================================================================================
+
+# bool query
+# bool query는 복합 쿼리로 위에서 실습해본 쿼리들을 조합해서 사용하고 쿼리를 조합할 수 있도록 4개(must, must_not, should, filter)의 타입을 지원한다.
+
+# must 타입: 쿼리를 실행해서 모두 참인 도큐먼트를 찾는다. => and 연산
+# 한 개의 쿼리를 실행하는 must 타입
+# 한 개의 쿼리를 실행하면 쿼리 실행 결과가 참인 도큐먼트를 찾는다.
+# 한 개의 쿼리를 실행할 때는 []를 생략할 수 있다.
+
+# GET 인덱스 이름/_search
+# {
+#   "query": {
+#     "bool": {
+#       "must": [
+#         {실행할 쿼리}
+#       ]
+#     }
+#   }
+# }
+
+# "customer_first_name" 필드에 "Mary"가 포함된 모든 도큐먼트를 검색한다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_first_name"],
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "customer_first_name": "Mary"
+          }
+        }
+      ]
+    }
+  }
+}
+
+# 복수 개의 쿼리를 실행하는 must 타입 => and
+# 복수 개의 쿼리를 실행하면 쿼리 실행 결과가 모두 참인 도큐먼트를 찾는다.
+
+# GET 인덱스 이름/_search
+# {
+#   "query": {
+#     "bool": {
+#       "must": [
+#         {실행할 쿼리},
+#         {실행할 쿼리},
+#         ...
+#       ]
+#     }
+#   }
+# }
+
+# "customer_first_name" 필드에 "Mary"가 포함되고 "day_of_week" 필드에 저장된 값이 정확히 "Sunday"이고 "category" 필드에 "Clothing"가 포함된인 모든 도큐먼트를 검색한다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_first_name", "day_of_week", "category"],
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": { 
+            "customer_first_name": "Mary"
+          }
+        },
+        {
+          "term": {
+            "day_of_week": "Sunday"
+          }
+        },
+        {
+          "match": {
+            "category": "Clothing"
+          }
+        }
+      ]
+    }
+  }
+}
+
+# ===========================================================================================
+
+# must_not: 쿼리 실행 결과가 참인 도큐먼트 중에서 조건에 만족하는 도큐먼트를 제외한다.
+# must_not 타입이 단독으로 사용된 경우 => not
+# must_not 타입이 단독으로 사용되면 조건에 만족하는 도큐먼트를 제외한다.
+
+# GET 인덱스 이름/_search
+# {
+#   "query": {
+#     "bool": {
+#       "must_not": [
+#         {실행할 쿼리},
+#         {실행할 쿼리},
+#         ...
+#       ]
+#     }
+#   }
+# }
+
+# "customer_full_name" 필드에 "mary", "underwood"를 포함한 모든 도큐먼트와 "day_of_week" 필드에 저장된 값이 정확히 "Monday"인 도큐먼트를 검색 결과에서 제외한다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name", "day_of_week"], 
+  "query": {
+    "bool": {
+      "must_not": [
+        {
+          "match": {
+            "customer_full_name": "mary underwood"
+          }
+        },
+        {
+          "term": {
+            "day_of_week": "Monday"
+          }
+        }
+      ]
+    }
+  }
+}
+
+# must_not 타입이 must 타입과 같이 사용된 경우
+# GET 인덱스 이름/_search
+# {
+#   "query": {
+#     "bool": {
+#       "must": [
+#         {실행할 쿼리},
+#         {실행할 쿼리},
+#         ...
+#       ],
+#       "must_not": [
+#         {실행할 쿼리},
+#         {실행할 쿼리},
+#         ...
+#       ]
+#     }
+#   }
+# }
+
+# "customer_full_name" 필드에 "mary"가 포함된 도큐먼트 중에서 "customer_full_name"에 "bailey"를 포함하고 있거나 "day_of_week"에 정확히 "Friday"가 입력된 도큐먼트를 제외하고 검색한다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name", "day_of_week", "category"],
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "customer_full_name": "mary"
+          }
+        }
+      ],
+      "must_not": [
+        {
+          "match": {
+            "customer_full_name": "bailey"
+          }
+        },
+        {
+          "term": {
+            "day_of_week": "Friday"
+          }
+        }
+      ]
+    }
+  }
+}
+
+# ===========================================================================================
+
+# should 타입: 쿼리를 실행해서 1개 이상 참인 도큐먼트를 찾는다. => or 연산
+# 한 개의 쿼리를 실행하는 should 타입
+# 한 개의 쿼리를 실행하면 쿼리 실행 결과가 참인 도큐먼트를 찾는다.
+# 한 개의 쿼리를 실행하면 must 타입과 should 타입 같은 검색 결과를 얻는다.
+
+# GET 인덱스 이름/_search
+# {
+#   "query": {
+#     "bool": {
+#       "should": [
+#         {실행할 쿼리}
+#       ]
+#     }
+#   }
+# }
+
+# "day_of_week" 필드에 정확히 "Friday"가 입력된 도큐먼트만 검색한다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["day_of_week"], 
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "term": {
+            "day_of_week": "Friday"
+          }
+        }
+      ]
+    }
+  }
+}
+
+# 복수 개의 쿼리를 실행하는 should 타입 => or
+# 복수 개의 쿼리를 실행하면 쿼리 실행 결과가 1개 이상 참인 도큐먼트를 찾는다.
+
+# GET 인덱스 이름/_search
+# {
+#   "query": {
+#     "bool": {
+#       "should": [
+#         {실행할 쿼리},
+#         {실행할 쿼리},
+#         ...
+#       ]
+#     }
+#   }
+# }
+
+# "day_of_week" 필드에 정확히 "Sunday" 또는 "Monday"가 입력된 도큐먼트만 검색한다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["day_of_week"], 
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "term": {
+            "day_of_week": "Sunday"
+          }
+        },
+        {
+          "term": {
+            "day_of_week": "Monday"
+          }
+        }
+      ]
+    }
+  }
+}
+
+# "should" 타입에도 "must_not" 타입을 사용할 수 있다.
+# "day_of_week" 필드에 정확히 "Sunday" 또는 "Monday"가 입력된 도큐먼트 중에서 "customer_full_name" 필드에 "eddie"가 포함된 도큐먼트를 제외하고 검색한다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name", "day_of_week"], 
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "term": {
+            "day_of_week": "Sunday"
+          }
+        },
+        {
+          "term": {
+            "day_of_week": "Monday"
+          }
+        }
+      ],
+      "must_not": [
+        {
+          "match": {
+            "customer_full_name": "eddie"
+          }
+        }
+      ]
+    }
+  }
+}
+
+# ===========================================================================================
+
+# filter 타입: must 타입과 같은 동작을 한다. 유사도 스코어 계산을 하지 않는다.
+# GET 인덱스 이름/_search
+# {
+#   "query": {
+#     "bool": {
+#       "filter": [
+#         {실행할 쿼리},
+#         {실행할 쿼리},
+#         ...
+#       ]
+#     }
+#   }
+# }
+
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name", "taxful_total_price"],
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "range": {
+            "taxful_total_price": {
+              "gte": 30,
+              "lte": 60
+            }
+          }
+        }
+      ],
+      "must_not": [
+        {
+          "match": {
+            "customer_full_name": "mary"
+          }
+        }
+      ]
+    }
+  }
+}
+
+# ===========================================================================================
+
+# must, must_not, should, filter 타입을 모두 섞어서 사용할 수 있다.
+# 전문 검색을 먼저 실행하고 필터링을 하면 불필요한 데이터를 검색하게 되므로 필터링을 먼저하고 검색하면 검색 성능을 향상시킬 수 있다.
+
+# 전문 검색을 먼저하고 필터링을 실행한다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name", "day_of_week"],
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "customer_full_name": "mary"
+          }
+        }
+      ],
+      "filter": [
+        {
+          "term": {
+            "day_of_week": "Monday"
+          }
+        }
+      ]
+    }
+  }
+}
+
+# 필터링을 먼저하고 전문 검색을 실행한다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name", "day_of_week"],
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "term": {
+            "day_of_week": "Monday"
+          }
+        }
+      ],
+      "must": [
+        {
+          "match": {
+            "customer_full_name": "mary"
+          }
+        }
+      ]
+    }
+  }
+}
+
+# ===========================================================================================
+
+# 패턴 검색 쿼리
+# 검색하려는 검색어를 정확히 알지 못하는 경우나 검색어가 너무 길어서 검색어 전체를 입력하는 것이 불편할 경우 검색어의 일부분을 알고있다면 패턴을 이용해서 검색할 수 있다.
+# 패턴 검색은 와일드카드 문자를 이용하는 방법과 정규식을 이용하는 방법이 있다.
+
+# 와일드카드 문자를 이용하는 패턴 검색 쿼리
+# 와일드카드 문자는 "*"와 "?"를 사용할 수 있고 "*"은 글자 개수와 상관없이 모든 문자를 매칭할 수 있고 "?"는 오직 1문자만 매칭할 수 있다.
+# GET 인덱스 이름/_search
+# {
+#   "query": {
+#     "wildcard": {
+#       "검색할 필드 이름": "와일드카드 문자를 이용한 패턴"
+#     }
+#   }
+# }
+
+# "customer_full_name" 필드에 저장된 값이 "ma"로 시작하는 단어가 포함된 모든 도큐먼트를 검색한다.
+# 각 단어(토큰)에서 "ma"로 시작하는 내용이 있으면 검색되므로 "Mary Bailey"도 검색되고 "Boris Maldonado"도 검색된다.
+# 전문 검색 쿼리를 실행하면 검색어도 엘라스틱서치 분석기가 토큰화 하고 소문자로 변경시켜 처리하므로 "Mary"나 "mary"나 모두 검색이 가능하다.
+# 와일드카드 문자를 사용한 패턴 검색 쿼리는 엘라스틱서치 분석기가 실행되지 않기 때문에 도큐먼트가 저장될 때 text 타입으로 선언된 필드는 데이터가 토큰화 된 후 모두 소문자로 변경되서 저장되기 때문에 "Ma*"로 검색하면 데이터 토큰에는 대문자가 없기 때문에 아무것도 검색되지 않는다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name"], 
+  "query": {
+    "wildcard": {
+      "customer_full_name": "ma*"
+    }
+  }
+}
+
+# 와일드카드 문자를 "ma*" 처럼 사용하면 "ma"로 시작하는 모든 것을 의미하므로 "Mary"와 "Maldonado"가 모두 검색되지만 와일드카드 문자를 "ma??" 처럼 사용하면 "ma"로 시작하는 4글자를 의미하므로 "Mary"만 검색된다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name"], 
+  "query": {
+    "wildcard": {
+      "customer_full_name": "ma??"
+    }
+  }
+}
+
+# 와일드카드 문자를 이용한 패턴 검색은 전문 검색 쿼리와 용어 검색 쿼리에 모두 사용할 수 있다.
+# 용어 검색 쿼리는 대소문자를 구분하는 것에 주의한다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name"], 
+  "query": {
+    "wildcard": {
+      "customer_first_name.keyword": "Ma??"
+    }
+  }
+}
+
+# 정규식을 이용하는 패턴 검색 쿼리 => 정규식 용어 쿼리 => keyword 타입의 필드만 가능하다.
+# 정규식을 이용하는 패턴 검색쿼리의 자세한 사항은 아래 공식 문서를 참고한다.
+# https://www.elastic.co/guide/en/elasticsearch/reference/6.7/query-dsl-regexp-query.html
+# GET 인덱스 이름/_search
+# {
+#   "query": {
+#     "regexp": {
+#       "검색할 필드 이름": "정규식을 이용한 패턴"
+#     }
+#   }
+# }
+
+# "customer_first_name" 필드는 text 타입의 필드이므로 정규식을 이용하는 패턴 검색 쿼리가 실행되지 않는다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name"], 
+  "query": {
+    "regexp": {
+      "customer_first_name": "Mar."
+    }
+  }
+}
+
+# "customer_first_name.keyword" 필드는 keyword 타입의 필드이므로 정규식을 이용하는 패턴 검색 쿼리가 정상적으로 실행된다.
+GET kibana_sample_data_ecommerce/_search
+{
+  "_source": ["customer_full_name"], 
+  "query": {
+    "regexp": {
+      "customer_first_name.keyword": "Mar."
+    }
+  }
+}
