@@ -1,0 +1,72 @@
+서울 공공와이파이 지도 만들기
+
+서울 열린데이터 광장에서 공공와이파이를 검색하고 "서울시 공공와이파이 서비스 위치 정보"를 클릭한다.
+https://data.seoul.go.kr/dataList/OA-20883/S/1/datasetView.do
+서울 열린데이터 광장에서 제공하는 공공와이파이 서비스 위치 정보는 오픈 API를 제공한다.
+오픈 API를 사용하려면 인증키가 필요하다.
+
+브라우저에서 오픈 API 호출하기
+
+요청인자
+KEY            => String(필수), 인증키, OpenAPI 에서 발급된 인증키
+TYPE           => String(필수), 요청파일타입, xml : xml, xml파일 : xmlf, 엑셀파일 : xls, json파일 : json
+SERVICE        => String(필수), 서비스명, TbPublicWifiInfo
+START_INDEX    => INTEGER(필수), 요청시작위치, 정수 입력 (페이징 시작번호 입니다 : 데이터 행 시작번호)
+END_INDEX      => INTEGER(필수), 요청종료위치, 정수 입력 (페이징 끝번호 입니다 : 데이터 행 끝번호)
+X_SWIFI_WRDOFC => STRING(선택), 자치구, 자치구명
+X_SWIFI_ADRES1 => STRING(선택), 도로명주소, 도로명 주소
+http://openapi.seoul.go.kr:8088/(KEY)/(TYPE)/TbPublicWifiInfo/(START_INDEX)/(END_INDEX)/(X_SWIFI_WRDOFC)/(X_SWIFI_ADRES1)
+
+http://openapi.seoul.go.kr:8088/(인증키)/xml/TbPublicWifiInfo/1/5/
+http://openapi.seoul.go.kr:8088/(인증키)/xml/TbPublicWifiInfo/1/5/종로구/
+http://openapi.seoul.go.kr:8088/(인증키)/xml/TbPublicWifiInfo/1/5/종로구/삼일대로
+
+=========================================================================================================================
+
+서울시 공공와이파이 서비스 위치 정보를 기억할 인덱스를 명시적으로 매핑한다.
+
+"gu"는 서울시의 구 이름으로 검색하면 되므로 용어 검색만 가능하게 keyword 타입으로 선언한다.
+"place"는 와이파이 설치 장소가 문장으로 구성될 수 있으므로 전문 검색만 가능하게 text 타입으로 선언한다.
+"location"은 위도와 경도를 가지는 위치 정보이므로 geo_point 타입으로 선언한다.
+와이파이 설치 장소는 한글 데이터이고 한글의 경우 엘라스틱서치에서 제공하는 nori 한글 형태소 분석기를 사용해야 제대로된 
+전문 검색이 가능하다.
+
+아래와 같이 엘라스틱서치 6.4 버전부터 공식 지원되는 nori 한글 형태소 분석기를 설치한다.
+************************************************************************************************************************
+elasticsearch-plugin install analysis-nori
+************************************************************************************************************************
+# nori 한글 형태소 분석기를 설치했으면 엘라스틱서치와 키바나를 다시 실행한다.
+
+************************************************************************************************************************
+Dev Tools 코딩 내용
+************************************************************************************************************************
+PUT seoul_wifi
+PUT seoul_wifi
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "korean": {
+          "tokenizer": "nori_tokenizer"
+        }
+      }
+    }
+  }, 
+  "mappings": {
+    "properties": {
+      "gu": {"type": "keyword"}, 
+      "place": {"type": "text", "analyzer": "korean"}, 
+      "location": {"type": "geo_point"}
+    }
+  }
+}
+
+GET seoul_wifi/_mapping
+"track_total_hits" 옵션을 사용하면 검색되는 데이터 개수가 10000건을 초과해도 검색한다.
+GET seoul_wifi/_search
+{
+  "track_total_hits": true
+}
+DELETE seoul_wifi
+************************************************************************************************************************
+
